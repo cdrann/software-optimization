@@ -81,20 +81,19 @@ void calculate_step(const comp_type *U, const comp_type *P, const comp_type *U_o
 
         for(int j = 1; j <= Nx - 2; j++) {
             // TODO вынести
-            comp_type f_ij_n = (j == Sx && i == Sy) ? val : 0;
+
 
             getU(U_new, i, j) = 2 * U_curr - getU(U_old, i, j) +
-                            tau * tau *
-                            ( f_ij_n
-                              +
-                              (1 / (2 * hx * hx)) *
-                              ((U_right - U_curr) * (P_lower + P_curr)
-                                + (U_left - U_curr) * (P_lower_left + P_left))
+                                tau * tau *
+                                (
+                                  (1 / (2 * hx * hx)) *
+                                  ((U_right - U_curr) * (P_lower + P_curr)
+                                   + (U_left - U_curr) * (P_lower_left + P_left))
 
-                              +  (1 / (2 * hy * hy)) *
-                                 ((U_upper - U_curr) * (P_left + P_curr)
-                                   + (U_lower - U_curr) * (P_lower_left + P_lower)  )
-                            );
+                                  +  (1 / (2 * hy * hy)) *
+                                     ((U_upper - U_curr) * (P_left + P_curr)
+                                      + (U_lower - U_curr) * (P_lower_left + P_lower)  )
+                                );
 
             *U_max_n = max(*U_max_n, fabs(getU(U_new, i, j)));
 
@@ -140,9 +139,21 @@ int main() {
     comp_type U_max_n = 0;
     for(int n = 0; n < Nt; n++) {
         U_max_n = 0;
+        // f_ij_n
         comp_type val = exp((-1) * (1 / pow(gamma, 2) ) * pow((2 * M_PI * f0 * (n * tau - t0)), 2) )
-                         * sin(2 * M_PI * f0 * (n * tau - t0));
+                        * sin(2 * M_PI * f0 * (n * tau - t0));
+
+
         calculate_step(U, P, U_old, U_new, &U_max_n, val);
+
+        // добавить tau*tau*f_ij^n
+        for(int i = 1; i <= Ny - 2; i++) {
+            for(int j = 1; j <= Nx - 2; j++) {
+                if(j == Sx && i == Sy) {
+                    getU(U, i, j) += tau * tau * val;
+                }
+            }
+        }
 
         comp_type *buf = U_old;
         U_old = U;
