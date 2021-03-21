@@ -14,7 +14,7 @@
 #define GRID_SIZE (Nx * Ny)
 
 // число шагов
-#define Nt	100
+#define Nt	110
 
 // область моделирования
 #define Xa 	(comp_type)0.0
@@ -61,13 +61,9 @@ void init_arrays(comp_type *U, comp_type *U_old, comp_type *U_new, comp_type *P)
 void calculate_step(const comp_type *U, const comp_type *P, const comp_type *U_old, comp_type *U_new, comp_type *U_max_n, comp_type val) {
     for(int i = 1; i <= Ny - 2; i++) {
         for(int j = 1; j <= Nx - 2; j++) {
-            comp_type f_ij_n = (j == Sx && i == Sy) ? val : 0;
-
             getU(U_new, i, j) = 2 * getU(U, i, j) - getU(U_old, i, j) +
                                 tau * tau *
-                                ( f_ij_n
-                                  +
-                                  (1 / (2 * hx * hx)) *
+                                ((1 / (2 * hx * hx)) *
                                   ((getU(U, i, j + 1) - getU(U, i, j)) * (getP(P, i - 1, j) + getP(P, i, j))
                                    + (getU(U, i, j - 1) - getU(U, i, j)) * (getP(P, i - 1, j - 1) + getP(P, i, j - 1)))
 
@@ -77,6 +73,7 @@ void calculate_step(const comp_type *U, const comp_type *P, const comp_type *U_o
                                 );
 
             *U_max_n = max(*U_max_n, fabs(getU(U_new, i, j)));
+
         }
     }
 }
@@ -102,11 +99,11 @@ int main() {
     comp_type U_max_n = 0;
     for(int n = 0; n < Nt; n++) {
         U_max_n = 0;
-
         comp_type val = exp((-1) * (1 / pow(gamma, 2) ) * pow((2 * M_PI * f0 * (n * tau - t0)), 2) )
                         * sin(2 * M_PI * f0 * (n * tau - t0));
-
         calculate_step(U, P, U_old, U_new, &U_max_n, val);
+
+        getU(U, Sy, Sx) += tau * tau * val;
 
         comp_type *buf = U_old;
         U_old = U;

@@ -60,23 +60,60 @@ void init_arrays(comp_type *U, comp_type *U_old, comp_type *U_new, comp_type *P)
 
 void calculate_step(const comp_type *U, const comp_type *P, const comp_type *U_old, comp_type *U_new, comp_type *U_max_n, comp_type val) {
     for(int i = 1; i <= Ny - 2; i++) {
+
+        comp_type U_lower = getU(U, i - 1, 1); // (i-1, j)
+        comp_type U_lower_right = getU(U, i - 1, 2); // (i-1, j+ 1)
+
+        comp_type U_left = getU(U, i, 0); // (i, j-1)
+        comp_type U_curr = getU(U, i, 1); // (i, j)
+        comp_type U_right = getU(U, i, 2); // (i, j+1)
+
+        comp_type U_upper = getU(U, i + 1, 1); // (i+1, j)
+        comp_type U_upper_right = getU(U, i + 1, 2); // (i+1, j+1)
+
+        comp_type P_left = getP(P, i, 0); // (i, j-1)
+        comp_type P_curr = getP(P, i, 1); // (i, j)
+        comp_type P_right = getP(P, i, 2); // (i, j+1)
+
+        comp_type P_lower_left = getP(P, i - 1, 0); // (i-1, j-1)
+        comp_type P_lower = getP(P, i - 1, 1); // (i-1, j)
+        comp_type P_lower_right = getP(P, i - 1, 2); // (i-1, j+1)
+
         for(int j = 1; j <= Nx - 2; j++) {
             comp_type f_ij_n = (j == Sx && i == Sy) ? val : 0;
 
-            getU(U_new, i, j) = 2 * getU(U, i, j) - getU(U_old, i, j) +
-                                tau * tau *
-                                ( f_ij_n
-                                  +
-                                  (1 / (2 * hx * hx)) *
-                                  ((getU(U, i, j + 1) - getU(U, i, j)) * (getP(P, i - 1, j) + getP(P, i, j))
-                                   + (getU(U, i, j - 1) - getU(U, i, j)) * (getP(P, i - 1, j - 1) + getP(P, i, j - 1)))
+            getU(U_new, i, j) = 2 * U_curr - getU(U_old, i, j) +
+                            tau * tau *
+                            ( f_ij_n
+                              +
+                              (1 / (2 * hx * hx)) *
+                              ((U_right - U_curr) * (P_lower + P_curr)
+                                + (U_left - U_curr) * (P_lower_left + P_left))
 
-                                  +  (1 / (2 * hy * hy)) *
-                                     ((getU(U, i + 1, j) - getU(U, i, j)) * (getP(P, i, j - 1) + getP(P, i, j))
-                                      + (getU(U, i - 1, j) - getU(U, i, j)) * (getP(P, i - 1, j - 1) + getP(P, i - 1, j))  )
-                                );
+                              +  (1 / (2 * hy * hy)) *
+                                 ((U_upper - U_curr) * (P_left + P_curr)
+                                   + (U_lower - U_curr) * (P_lower_left + P_lower)  )
+                            );
 
             *U_max_n = max(*U_max_n, fabs(getU(U_new, i, j)));
+
+            U_lower = U_lower_right; // (i-1, j)
+            U_lower_right = getU(U, i - 1, j + 2); //(i-1, j+ 1)
+
+            U_left = U_curr; // (i, j-1)
+            U_curr = U_right; // (i, j)
+            U_right = getU(U, i, j + 2); // (i, j+1)
+
+            U_upper = U_upper_right; // (i+1, j)
+            U_upper_right =  getU(U, i + 1, j + 2); // (i+1, j+1)
+
+            P_left = P_curr; // (i, j-1)
+            P_curr =  P_right; // (i, j)
+            P_right = getP(P, i, j + 2); // (i, j+1)
+
+            P_lower_left = P_lower; // (i-1, j-1)
+            P_lower =  P_lower_right; // (i-1, j)
+            P_lower_right = getP(P, i - 1, j + 2); // (i-1, j+1)
         }
     }
 }
@@ -102,10 +139,8 @@ int main() {
     comp_type U_max_n = 0;
     for(int n = 0; n < Nt; n++) {
         U_max_n = 0;
-
         comp_type val = exp((-1) * (1 / pow(gamma, 2) ) * pow((2 * M_PI * f0 * (n * tau - t0)), 2) )
-                        * sin(2 * M_PI * f0 * (n * tau - t0));
-
+                         * sin(2 * M_PI * f0 * (n * tau - t0));
         calculate_step(U, P, U_old, U_new, &U_max_n, val);
 
         comp_type *buf = U_old;
